@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmic Heart Animation</title>
+<style>
+html,body{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden}
+canvas{display:block;position:absolute;left:0;top:0;width:100%;height:100%}
+</style>
+</head>
+<body>
+<canvas id="screen"></canvas>
+
+<script>
+(function () {
+    var canvas = document.getElementById("screen");
+    var ctx = canvas.getContext("2d");
+    var W = 0, H = 0, scale = 1;
+    var dots = [];
+    var start = Date.now();
+
+    function resize() {
+        W = window.innerWidth;
+        H = window.innerHeight;
+        scale = Math.min(W, H) / 46;
+
+        canvas.width = W;
+        canvas.height = H;
+
+        makeHeartDots();
+        start = Date.now();
+    }
+
+    function heart(t, s) {
+        var x = 16 * Math.sin(t) * Math.sin(t) * Math.sin(t);
+        var y = -(13*Math.cos(t)
+                - 5*Math.cos(2*t)
+                - 2*Math.cos(3*t)
+                - Math.cos(4*t));
+        return {x:x*s, y:y*s};
+    }
+
+    function makeHeartDots() {
+        dots = [];
+        var cx = W / 2;
+        var cy = H * 0.48;
+
+        /* نفس فكرة الصورة: خطوط كثيرة من النقاط */
+        for (var layer = 0; layer < 14; layer++) {
+            var s = 0.62 + layer * 0.025;
+
+            for (var i = 0; i < 220; i++) {
+                var t = (i / 220) * Math.PI * 2;
+                var p = heart(t, scale * s);
+
+                dots.push({
+                    x: cx + p.x,
+                    y: cy + p.y,
+                    delay: (i / 220) * 5200 + layer * 22,
+                    r: 0.8 + Math.random() * 0.7,
+                    a: 0.45 + Math.random() * 0.4
+                });
+            }
+        }
+    }
+
+    function clear() {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    function drawHeartDots(elapsed, size, alpha) {
+        var cx = W/2;
+        var cy = H*0.48;
+
+        for (var layer=0; layer<14; layer++) {
+            var s = 0.62 + layer*0.025;
+
+            for (var i=0; i<220; i++) {
+                var t=(i/220)*Math.PI*2;
+                var p=heart(t,scale*s*size);
+
+                var appear = 1;
+                if (elapsed < 5200) {
+                    var delay=(i/220)*5200+layer*22;
+                    appear=(elapsed-delay)/150;
+                    if(appear<0) appear=0;
+                    if(appear>1) appear=1;
+                }
+
+                if(appear<=0) continue;
+
+                ctx.globalAlpha=alpha*appear*(0.65+0.35*Math.sin(i));
+                ctx.fillStyle="#a8a8a8";
+                ctx.beginPath();
+                ctx.arc(cx+p.x,cy+p.y,0.8,0,Math.PI*2);
+                ctx.fill();
+            }
+        }
+        ctx.globalAlpha=1;
+    }
+
+    function drawCosmicBeing(p) {
+        if(p<=0) return;
+
+        var cx=W/2;
+        var headR=Math.min(W,H)*0.075;
+
+        ctx.save();
+        ctx.globalAlpha=p;
+
+        /* ضوء كوني */
+        var g=ctx.createRadialGradient(cx,H*.2,5,cx,H*.25,Math.min(W,H)*.55);
+        g.addColorStop(0,"rgba(200,200,210,.14)");
+        g.addColorStop(1,"rgba(0,0,0,0)");
+        ctx.fillStyle=g;
+        ctx.fillRect(0,0,W,H);
+
+        /* الرأس */
+        ctx.fillStyle="#08080b";
+        ctx.strokeStyle="rgba(190,190,200,.38)";
+        ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.arc(cx,H*.18,headR,0,Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+
+        /* جسم ضخم وكتفان */
+        var sw=Math.min(W,H)*.44;
+        ctx.beginPath();
+        ctx.moveTo(cx-headR*.8,H*.28);
+        ctx.bezierCurveTo(cx-sw*.55,H*.34,cx-sw*.9,H*.58,cx-sw,H);
+        ctx.lineTo(cx+sw,H);
+        ctx.bezierCurveTo(cx+sw*.9,H*.58,cx+sw*.55,H*.34,cx+headR*.8,H*.28);
+        ctx.closePath();
+        ctx.fillStyle="#060609";
+        ctx.fill();
+        ctx.strokeStyle="rgba(170,170,180,.28)";
+        ctx.stroke();
+
+        /* خطوط العباءة */
+        for(var i=-8;i<=8;i++){
+            ctx.beginPath();
+            ctx.moveTo(cx+i*headR*.25,H*.30);
+            ctx.quadraticCurveTo(cx+i*sw*.1,H*.62,cx+i*sw*.11,H);
+            ctx.strokeStyle="rgba(160,160,170,.11)";
+            ctx.lineWidth=1.2;
+            ctx.stroke();
+        }
+
+        /* نجوم داخل الجسد */
+        for(var n=0;n<80;n++){
+            var x=cx-sw*.82+(n*97%164)/100*sw;
+            var y=H*.34+(n*53%100)/100*H*.58;
+            ctx.fillStyle="rgba(210,210,220,.16)";
+            ctx.fillRect(x,y,1,1);
+        }
+
+        ctx.restore();
+    }
+
+    function drawHand(p) {
+        if(p<=0) return;
+
+        var cx=W/2, cy=H*.48;
+        var r=Math.min(W,H)*.095;
+
+        /* اليد تدخل من اليمين */
+        var sx=W*1.02, sy=H*.12;
+        var ex=cx+15, ey=cy;
+        var x=sx+(ex-sx)*p;
+        var y=sy+(ey-sy)*p;
+
+        ctx.save();
+        ctx.globalAlpha=p;
+        ctx.lineCap="round";
+
+        /* الساعد */
+        ctx.strokeStyle="#08080b";
+        ctx.lineWidth=r*.72;
+        ctx.beginPath();
+        ctx.moveTo(W*1.05,H*.02);
+        ctx.quadraticCurveTo(W*.95,H*.20,x,y);
+        ctx.stroke();
+
+        /* كف */
+        ctx.fillStyle="#08080b";
+        ctx.strokeStyle="rgba(180,180,190,.32)";
+        ctx.lineWidth=1.5;
+        ctx.beginPath();
+        ctx.ellipse(x,y,r*.62,r*.78,-.35,0,Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+
+        /* الأصابع */
+        for(var i=0;i<5;i++){
+            var ox=(i-2)*r*.27;
+            ctx.strokeStyle="#08080b";
+            ctx.lineWidth=r*.21;
+            ctx.beginPath();
+            ctx.moveTo(x+ox*.2,y+r*.35);
+            ctx.quadraticCurveTo(x+ox,y+r*.75,cx+ox,cy+20+Math.abs(i-2)*5);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+
+    function drawCracks(p) {
+        if(p<=0)return;
+
+        var cx=W/2, cy=H*.48;
+        var s=scale*.28;
+
+        ctx.save();
+        ctx.globalAlpha=p;
+        ctx.strokeStyle="#d5d5d5";
+        ctx.lineWidth=1.5;
+        ctx.lineCap="round";
+
+        var lines=[
+            [[0,-8],[-5,0],[-13,7],[-8,17]],
+            [[1,-5],[7,3],[5,13],[14,20]],
+            [[-7,5],[-17,4],[-24,12]],
+            [[7,8],[17,7],[23,14]],
+            [[0,13],[-2,25],[3,36]]
+        ];
+
+        for(var i=0;i<lines.length;i++){
+            ctx.beginPath();
+            for(var j=0;j<lines[i].length;j++){
+                var px=cx+lines[i][j][0]*s*.55;
+                var py=cy+lines[i][j][1]*s*.55;
+                if(j===0)ctx.moveTo(px,py);
+                else ctx.lineTo(px,py);
+            }
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    function drawExplosion(q) {
+        if(q<=0)return;
+
+        var cx=W/2,cy=H*.48;
+
+        for(var i=0;i<100;i++){
+            var a=(i/100)*Math.PI*2;
+            var distance=(10+(i%15)*7)*q*q;
+            var x=cx+Math.cos(a)*distance;
+            var y=cy+Math.sin(a)*distance;
+
+            ctx.globalAlpha=(1-q)*.9;
+            ctx.fillStyle="#aaa";
+            ctx.beginPath();
+            ctx.arc(x,y,0.7+(i%3)*.35,0,Math.PI*2);
+            ctx.fill();
+        }
+        ctx.globalAlpha=1;
+    }
+
+    function drawLaughingFace(p) {
+        if(p<=0)return;
+
+        var cx=W/2, cy=H*.18;
+        var r=Math.min(W,H)*.075;
+
+        ctx.save();
+        ctx.globalAlpha=Math.min(1,p);
+
+        // توهج الوجه بعد انفجار القلب
+        var glow=ctx.createRadialGradient(cx,cy,2,cx,cy,r*2.5);
+        glow.addColorStop(0,"rgba(210,210,220,.12)");
+        glow.addColorStop(1,"rgba(0,0,0,0)");
+        ctx.fillStyle=glow;
+        ctx.fillRect(cx-r*3,cy-r*3,r*6,r*6);
+
+        // وجه الكيان
+        ctx.fillStyle="#0a0a0d";
+        ctx.strokeStyle="rgba(190,190,200,.42)";
+        ctx.lineWidth=1.8;
+        ctx.beginPath();
+        ctx.arc(cx,cy,r,0,Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+
+        // عينان شريرتان لكن بدون ملامح واقعية
+        ctx.strokeStyle="#b8b8b8";
+        ctx.lineWidth=2;
+        ctx.lineCap="round";
+
+        ctx.beginPath();
+        ctx.moveTo(cx-r*.48,cy-r*.18);
+        ctx.quadraticCurveTo(cx-r*.25,cy-r*.32,cx-r*.04,cy-r*.12);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(cx+r*.04,cy-r*.12);
+        ctx.quadraticCurveTo(cx+r*.25,cy-r*.32,cx+r*.48,cy-r*.18);
+        ctx.stroke();
+
+        // ابتسامة كبيرة
+        ctx.beginPath();
+        ctx.moveTo(cx-r*.50,cy+r*.22);
+        ctx.quadraticCurveTo(cx,cy+r*.72,cx+r*.50,cy+r*.22);
+        ctx.stroke();
+
+        // أسنان الابتسامة
+        ctx.beginPath();
+        ctx.moveTo(cx-r*.31,cy+r*.38);
+        ctx.quadraticCurveTo(cx,cy+r*.52,cx+r*.31,cy+r*.38);
+        ctx.stroke();
+
+        for(var i=-2;i<=2;i++){
+            var tx=cx+i*r*.12;
+            ctx.beginPath();
+            ctx.moveTo(tx,cy+r*.43);
+            ctx.lineTo(tx,cy+r*.55);
+            ctx.strokeStyle="rgba(170,170,180,.30)";
+            ctx.lineWidth=.7;
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+
+    function frame() {
+        var t=(Date.now()-start)/1000;
+        clear();
+
+        /* النجوم */
+        for(var s=0;s<130;s++){
+            var sx=(s*97)%W;
+            var sy=(s*53)%H;
+            ctx.fillStyle="rgba(180,180,190,.12)";
+            ctx.fillRect(sx,sy,1,1);
+        }
+
+        var cx=W/2,cy=H*.48;
+
+        if(t<5.3){
+            drawHeartDots(t*1000,1,1);
+        }
+        else if(t<7.8){
+            var shrink=1-((t-5.3)/2.5)*.72;
+            drawHeartDots(99999,shrink,1);
+        }
+
+        /* يظهر الكيان خلف القلب */
+        drawCosmicBeing((t-6.0)/1.7);
+
+        /* اليد تمسك القلب */
+        drawHand((t-7.5)/1.7);
+
+        if(t>=7.8 && t<9.8){
+            drawHeartDots(99999,.28,1);
+        }
+
+        /* الشقوق */
+        if(t>=8.9 && t<10.2){
+            drawHeartDots(99999,.28,1);
+            drawCracks((t-8.9)/1.0);
+        }
+
+        /* التحطم */
+        if(t>=10.0){
+            var q=Math.min(1,(t-10.0)/1.8);
+            drawHeartDots(99999,.28,1-q);
+            drawCracks(1-q);
+            drawExplosion(q);
+
+            // بعد أن ينفجر القلب، يظهر الوجه تدريجيًا ويضحك
+            drawLaughingFace(Math.min(1,Math.max(0,(t-11.0)/1.2)));
+        }
+
+        requestAnimationFrame(frame);
+    }
+
+    canvas.addEventListener("click",function(){
+        start=Date.now();
+    });
+
+    resize();
+    requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
